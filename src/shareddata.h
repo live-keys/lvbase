@@ -14,41 +14,45 @@
 **
 ****************************************************************************/
 
-#ifndef LVPLUGINCONTEXT_H
-#define LVPLUGINCONTEXT_H
+#ifndef LVSHAREDDATA_H
+#define LVSHAREDDATA_H
 
 #include "live/lvbaseglobal.h"
 
-class QQmlEngine;
+#include <QSet>
+
+class QObject;
+class QReadWriteLock;
 
 namespace lv{
 
-class Engine;
-class Settings;
+class Filter;
 
-class LV_BASE_EXPORT PluginContext{
+//TODO: Optimize size
+
+class LV_BASE_EXPORT SharedData{
 
 public:
-    static void initFromEngine(QQmlEngine* engine);
+    SharedData();
+    virtual ~SharedData();
 
-    static lv::Engine*   engine();
-    static lv::Settings* settings();
+    bool lockForRead(Filter* filter);
+    bool lockForWrite(Filter* filter);
+
+    void unlock(Filter* filter);
+
+    QReadWriteLock* lock();
+    void createLock();
 
 private:
-    PluginContext(){}
+    void releaseObservers();
+    QReadWriteLock* m_lock;
 
-    static lv::Engine*   m_engine;
-    static lv::Settings* m_settings;
+    Filter*       m_writer;
+    QSet<Filter*> m_readers;
+    QSet<Filter*> m_observers;
 };
-
-inline Engine *PluginContext::engine(){
-    return m_engine;
-}
-
-inline Settings *PluginContext::settings(){
-    return m_settings;
-}
 
 }// namespace
 
-#endif // LVPLUGINCONTEXT_H
+#endif // LVSHAREDDATA_H

@@ -14,41 +14,34 @@
 **
 ****************************************************************************/
 
-#ifndef LVPLUGINCONTEXT_H
-#define LVPLUGINCONTEXT_H
-
-#include "live/lvbaseglobal.h"
-
-class QQmlEngine;
+#include "filter.h"
+#include "filterworker.h"
 
 namespace lv{
 
-class Engine;
-class Settings;
+Filter::Filter(){
 
-class LV_BASE_EXPORT PluginContext{
-
-public:
-    static void initFromEngine(QQmlEngine* engine);
-
-    static lv::Engine*   engine();
-    static lv::Settings* settings();
-
-private:
-    PluginContext(){}
-
-    static lv::Engine*   m_engine;
-    static lv::Settings* m_settings;
-};
-
-inline Engine *PluginContext::engine(){
-    return m_engine;
 }
 
-inline Settings *PluginContext::settings(){
-    return m_settings;
+Filter::~Filter(){
+
+}
+
+void Filter::use(
+        Filter::SharedDataLocker *locker,
+        const std::function<void ()> &cb,
+        const std::function<void ()> &rs)
+{
+    if ( !workerThread() ){
+        cb();
+        rs();
+    } else if ( locker && locker->m_allLocked ){
+        workerThread()->postWork(cb, [this, &locker, &rs](){
+//            delete locker;
+//            rs();
+        });
+    }
+    delete locker;
 }
 
 }// namespace
-
-#endif // LVPLUGINCONTEXT_H

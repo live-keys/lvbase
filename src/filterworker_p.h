@@ -14,32 +14,42 @@
 **
 ****************************************************************************/
 
-#ifndef LVINCUBATIONCONTROLLER_H
-#define LVINCUBATIONCONTROLLER_H
+#ifndef LVFILTERWORKER_P_H
+#define LVFILTERWORKER_P_H
 
 #include <QObject>
-#include <QQmlIncubationController>
-
-#include "live/lvbaseglobal.h"
+#include <QCoreApplication>
+#include "live/filterworker.h"
 
 namespace lv{
 
-class LV_BASE_EXPORT IncubationController : public QObject, public QQmlIncubationController{
+class FilterWorkerPrivate : public QObject{
 
     Q_OBJECT
 
 public:
-    IncubationController(QObject* parent = 0);
-    ~IncubationController();
+    explicit FilterWorkerPrivate() : QObject(0){}
+    ~FilterWorkerPrivate(){}
 
-protected:
-    virtual void timerEvent(QTimerEvent*);
+    void postNotify(const std::function<void ()>& fnc){
+        QCoreApplication::postEvent(this, new FilterWorker::CallEvent(fnc));
+    }
+
+    void postNotify(FilterWorker::CallEvent* evt){
+        QCoreApplication::postEvent(this, evt);
+    }
+
+    bool event(QEvent *event){
+        if (!dynamic_cast<FilterWorker::CallEvent*>(event))
+            return QObject::event(event);
+
+        FilterWorker::CallEvent* ce = static_cast<FilterWorker::CallEvent*>(event);
+        ce->callFilter();
+        return true;
+    }
+
 };
-
-inline void IncubationController::timerEvent(QTimerEvent *){
-    incubateFor(14);
-}
 
 }// namespace
 
-#endif // LVINCUBATIONCONTROLLER_H
+#endif // LVFILTERWORKER_P_H

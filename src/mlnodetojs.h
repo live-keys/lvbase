@@ -14,41 +14,28 @@
 **
 ****************************************************************************/
 
-#ifndef LVPLUGINCONTEXT_H
-#define LVPLUGINCONTEXT_H
+#ifndef LVMLNODETOJS_H
+#define LVMLNODETOJS_H
 
-#include "live/lvbaseglobal.h"
+#include "live/mlnode.h"
 
-class QQmlEngine;
+class QJSValue;
+class QJSEngine;
 
 namespace lv{
+namespace ml{
 
-class Engine;
-class Settings;
+void LV_BASE_EXPORT toJs(const MLNode& n, QJSValue& result, QJSEngine* engine);
+void LV_BASE_EXPORT fromJs(const QJSValue& value, MLNode& n);
 
-class LV_BASE_EXPORT PluginContext{
+}// namespace ml
 
+}// namepsace
+
+class MLNodeToJs
+{
 public:
-    static void initFromEngine(QQmlEngine* engine);
-
-    static lv::Engine*   engine();
-    static lv::Settings* settings();
-
-private:
-    PluginContext(){}
-
-    static lv::Engine*   m_engine;
-    static lv::Settings* m_settings;
+    MLNodeToJs();
 };
 
-inline Engine *PluginContext::engine(){
-    return m_engine;
-}
-
-inline Settings *PluginContext::settings(){
-    return m_settings;
-}
-
-}// namespace
-
-#endif // LVPLUGINCONTEXT_H
+#endif // LVMLNODETOJS_H
