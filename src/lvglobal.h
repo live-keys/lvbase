@@ -14,28 +14,20 @@
 **
 ****************************************************************************/
 
-#ifndef LVMLNODETOJS_H
-#define LVMLNODETOJS_H
+#ifndef LVGLOBAL_H
+#define LVGLOBAL_H
 
-#include "live/mlnode.h"
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
+#define LV_EXPORT __declspec(dllexport)
+#define LV_IMPORT __declspec(dllimport)
+#else
+#define LV_EXPORT
+#define LV_IMPORT
+#endif
 
-class QJSValue;
-class QJSEngine;
+#define DISABLE_COPY(Class) \
+  Class(const Class&);   \
+  void operator=(const Class&)
 
-namespace lv{
-namespace ml{
 
-void LV_BASE_EXPORT toJs(const MLNode& n, QJSValue& result, QJSEngine* engine);
-void LV_BASE_EXPORT fromJs(const QJSValue& value, MLNode& n);
-
-}// namespace ml
-
-}// namepsace
-
-class MLNodeToJs
-{
-public:
-    MLNodeToJs();
-};
-
-#endif // LVMLNODETOJS_H
+#endif //LVGLOBAL_H

@@ -14,27 +14,36 @@
 **
 ****************************************************************************/
 
-#include "plugincontext.h"
+#include "applicationcontext.h"
 #include <QString>
 
-#include <errno.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <utime.h>
-#include <cstring>
-#include <linux/limits.h>
+#include <windows.h>
+#include <tchar.h>
 
 namespace lv{
 
-QString PluginContext::applicationFilePathImpl(){
-    char link[PATH_MAX];
-    ssize_t linkSize;
-    if ( ( linkSize = readlink("/proc/self/exe", link, sizeof(link) - 1) ) != -1 ){
-        link[linkSize] = '\0';
-        return QString(link);
-    } else {
-        return QString();
+std::string ApplicationContext::applicationFilePathImpl(){
+    char* buffer    = 0;
+    char* newBuffer = 0;
+    int   size      = 0;
+    DWORD n         = 0;
+    do{
+        size += 256; // grow until fits
+        newBuffer = (char*)realloc(buffer, size * sizeof(char));
+        if ( newBuffer != NULL ){
+            buffer = newBuffer;
+        } else {
+            free(buffer);
+            return std::string();
+        }
+        n = GetModuleFileNameA(NULL, buffer, size);
+    } while ((int)n >= size);
+    if ( buffer != 0 ){
+        std::string base(buffer);
+        free(buffer);
+        return base;
     }
+    return std::string();
 }
 
 } // namespace

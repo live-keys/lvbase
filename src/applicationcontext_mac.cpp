@@ -14,7 +14,7 @@
 **
 ****************************************************************************/
 
-#include "plugincontext.h"
+#include "applicationcontext.h"
 #include <QString>
 
 #include <fcntl.h>
@@ -25,18 +25,18 @@
 
 namespace lv{
 
-QString PluginContext::applicationFilePathImpl(){
+std::string ApplicationContext::applicationFilePathImpl(){
     uint32_t pathNameSize = 0;
     _NSGetExecutablePath(NULL, &pathNameSize);
     char relativePath[pathNameSize];
     if ( _NSGetExecutablePath(relativePath, &pathNameSize) == 0 ){
         char fullPath[PATH_MAX];
         if ( realpath(relativePath, fullPath) != NULL )
-            return QString(fullPath);
+            return std::string(fullPath);
         else
-            return QString(relativePath);
+            return std::string(relativePath);
     } else
-        return QString();
+        return std::string();
 }
 
 }// namespace

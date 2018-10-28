@@ -14,32 +14,27 @@
 **
 ****************************************************************************/
 
-#ifndef LVINCUBATIONCONTROLLER_H
-#define LVINCUBATIONCONTROLLER_H
+#include "applicationcontext.h"
+#include <QString>
 
-#include <QObject>
-#include <QQmlIncubationController>
-
-#include "live/lvbaseglobal.h"
+#include <errno.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <utime.h>
+#include <cstring>
+#include <linux/limits.h>
 
 namespace lv{
 
-class LV_BASE_EXPORT IncubationController : public QObject, public QQmlIncubationController{
-
-    Q_OBJECT
-
-public:
-    IncubationController(QObject* parent = 0);
-    ~IncubationController();
-
-protected:
-    virtual void timerEvent(QTimerEvent*);
-};
-
-inline void IncubationController::timerEvent(QTimerEvent *){
-    incubateFor(14);
+std::string ApplicationContext::applicationFilePathImpl(){
+    char link[PATH_MAX];
+    ssize_t linkSize;
+    if ( ( linkSize = readlink("/proc/self/exe", link, sizeof(link) - 1) ) != -1 ){
+        link[linkSize] = '\0';
+        return std::string(link);
+    } else {
+        return std::string();
+    }
 }
 
-}// namespace
-
-#endif // LVINCUBATIONCONTROLLER_H
+} // namespace
