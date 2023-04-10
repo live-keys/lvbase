@@ -1,6 +1,7 @@
 /****************************************************************************
 **
 ** Copyright (C) 2022 Dinu SV.
+**
 ** This file is part of Livekeys Application.
 **
 ** GNU Lesser General Public License Usage
@@ -13,21 +14,10 @@
 **
 ****************************************************************************/
 
-#ifndef LVPROGRAMHOLDER_H
-#define LVPROGRAMHOLDER_H
+#include "catch_amalgamated.hpp"
+#include "live/visuallog.h"
 
-#include "live/lvbaseglobal.h"
-
-namespace lv{
-
-class Program;
-class ProgramHolder{
-
-public:
-    virtual Program* main() = 0;
-    virtual void setMain(Program* main) = 0;
-};
-
-}// namespace
-
-#endif // LVPROGRAMHOLDER_H
+int main(int argc, char *argv[]){
+    int result = Catch::Session().run( argc, argv );
+    return result;
+}
