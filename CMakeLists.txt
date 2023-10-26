@@ -1,117 +1,158 @@
-cmake_minimum_required(VERSION 3.14)
-
-project(livekeys LANGUAGES C CXX VERSION 1.9.1)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-find_package(QT NAMES #[[Qt6 ]] Qt5 COMPONENTS Core Quick REQUIRED)
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Quick Xml Svg WebEngine REQUIRED)
-
-set(CMAKE_AUTOUIC ON)
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-
-# Path Setup
-
-set(PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
-set(BINARY_PATH  ${CMAKE_BINARY_DIR}/bin)
-
-if (APPLE)
-    set(DEPLOY_PATH          ${BINARY_PATH}/livekeys.app/Contents)
-    set(LIBRARY_DEPLOY_PATH  ${DEPLOY_PATH}/Frameworks/Live.framework/Libraries)
-    set(MODULE_DEPLOY_PATH   ${DEPLOY_PATH}/PlugIns)
+if(BUILD_LVBASE_STATIC)
+    add_library(lvbase STATIC)
 else()
-    set(DEPLOY_PATH          ${BINARY_PATH})
-    set(LIBRARY_DEPLOY_PATH  ${DEPLOY_PATH})
-    set(MODULE_DEPLOY_PATH   ${DEPLOY_PATH}/plugins)
+    add_library(lvbase SHARED)
 endif()
 
-# Release or Debug Setup
+set_target_properties(lvbase PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${LIBRARY_DEPLOY_PATH}"
+    RUNTIME_OUTPUT_DIRECTORY "${LIBRARY_DEPLOY_PATH}"
+)
 
-set(DEBUG_BUILD   FALSE)
-set(RELEASE_BUILD FALSE)
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(DEBUG_BUILD TRUE)
-elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    set(DEBUG_BUILD TRUE)
-else()
-    set(RELEASE_BUILD TRUE)
+target_sources(lvbase PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/applicationcontext.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/bytebuffer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/commandlineparser.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/datetime.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/directory.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/exception.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/fileio.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/library.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/libraryloadpath.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/mlnode.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/mlnodetojson.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/module.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/package.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/packagegraph.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/palettecontainer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/path.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/program.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/stacktrace.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/typename.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/utf8.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/visuallog.cpp"
+)
+
+target_include_directories(lvbase
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+target_compile_definitions(lvbase PRIVATE LV_BASE_LIB)
+target_compile_features(lvbase PRIVATE cxx_std_17)
+
+if(BUILD_LVBASE_STATIC)
+    target_compile_definitions(lvbase PRIVATE LV_BASE_STATIC)
 endif()
 
+set(ENABLE_STACK_TRACE OFF)
 
-# Configuration options
+if(DEBUG_BUILD)
+    set(ENABLE_STACK_TRACE ON)
+endif()
 
-option(BUILD_EXECUTABLE        "Build livekeys executable."        ON)
-option(BUILD_CV                "Build computer vision modules."    ON)
-option(BUILD_TUTORIALS         "Build user tutorials."             ON)
-option(BUILD_ELEMENTS_COMPILER "Build compiler for live elements." ON)
-option(BUILD_ELEMENTS_ENGINE   "Build engine for live elements."   ON)
-option(BUILD_PACKAGE_SAMPLES   "Build samples for each package."   ON)
-option(BUILD_TESTS             "Build tests."                      ON)
-option(BUILD_UNIX_BFD_TRACE    "Unix: Build with bfd stack trace." ON)
-option(BUILD_QML_PLUGINTYPES   "Enable qml plugintypes output."    OFF)
-
-
-# Live Elements Configuration
-
-set(SHOULD_BUILD_ELEMENTS OFF)
-set(SHOULD_BUILD_ELEMENTS_ENGINE ${BUILD_ELEMENTS_ENGINE})
-
-if(BUILD_ELEMENTS_ENGINE)
-    include(${CMAKE_CURRENT_SOURCE_DIR}/project/3rdparty/v8.cmake)
-    if(NOT V8_FOUND)
-        message("CONFIG: V8 package not found. Skipping live elements engine.")
-        set(SHOULD_BUILD_ELEMENTS_ENGINE OFF)
-    else()
-        set(BUILD_ELEMENTS_COMPILER ON)
+if(ENABLE_STACK_TRACE)
+    if (WIN32)
+        target_compile_definitions(lvbase PUBLIC USE_STACK_TRACE)
+        target_link_libraries(lvbase dbghelp)
+    elseif(UNIX AND NOT APPLE)
+        if ( BUILD_UNIX_BFD_TRACE )
+            target_compile_definitions(lvbase PRIVATE ENABLE_STACK_TRACE)
+            target_link_libraries(lvbase -lbfd)
+        endif()
     endif()
 endif()
 
-if(BUILD_ELEMENTS_COMPILER)
-    set(SHOULD_BUILD_ELEMENTS ON)
+# Setup rpaths
+
+if(APPLE)
+    set_target_properties( lvbase PROPERTIES MACOSX_RPATH TRUE )
 endif()
 
-# Computer Vision Configuration
 
-set(SHOULD_BUILD_CV ${BUILD_CV})
-if(SHOULD_BUILD_CV)
-    find_package(OpenCV)
-    if(NOT OPENCV_FOUND)
-        message("CONFIG: OpenCV package not found. Skipping computer vision modules.")
-        set(SHOULD_BUILD_CV OFF)
+# Include 3rdparty library - date
+
+target_include_directories(lvbase
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/date/include"
+)
+
+# Include 3rdparty library - libb64
+
+target_include_directories(lvbase
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/libb64/include"
+)
+target_sources(lvbase
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/libb64/src/cdecode.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/libb64/src/cencode.c"
+)
+
+# Include 3rdparty library - backward
+
+if(UNIX)
+    target_include_directories(lvbase
+        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/backward"
+    )
+endif()
+
+# Include 3rdparty library - rapidjson
+
+target_include_directories(lvbase
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/rapidjson/include"
+)
+
+# Include 3rdparty library - utf8proc
+
+target_compile_definitions(lvbase PRIVATE UTF8PROC_EXPORTS)
+target_include_directories(lvbase
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/utf8proc"
+)
+target_sources(lvbase
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/utf8proc/utf8proc.c"
+)
+
+# Link experimental filesystem on older compilers
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.4)
+        message(FATAL_ERROR "GCC version must be newer than 5.4.")
+    elseif (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8.0)
+        message(WARNING "Older Verison of GCC detected (<8.0). Using Legacy C++ support")
+        target_link_libraries(lvbase -lstdc++fs)
     endif()
 endif()
 
-# Configuragion Log
+if (WIN32)
+    target_sources(lvbase
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/stacktrace_win.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/library_win.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/libraryloadpath_win.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/applicationcontext_win.cpp"
+    )
+endif ()
 
-message("\nBuild Configuration:")
-message("  * BUILD_EXECUTABLE:        ${BUILD_EXECUTABLE}")
-message("  * BUILD_TUTORIALS:         ${BUILD_TUTORIALS}")
-message("  * BUILD_ELEMENTS_COMPILER: ${BUILD_ELEMENTS_COMPILER}")
-message("  * BUILD_ELEMENTS_ENGINE:   ${SHOULD_BUILD_ELEMENTS_ENGINE}")
-message("  * BUILD_CV:                ${SHOULD_BUILD_CV}")
-message("  * BUILD_PACKAGE_SAMPLES:   ${BUILD_PACKAGE_SAMPLES}")
-message("  * BUILD_TESTS:             ${BUILD_TESTS}")
-message("")
-
-include(${CMAKE_CURRENT_SOURCE_DIR}/project/functions.cmake)
-
-
-if(BUILD_TESTS)
-    set(CATCH2_AMALGAMATED_PATH "${CMAKE_CURRENT_SOURCE_DIR}/tests/3rdparty/catch2/extras")
+if(UNIX AND NOT APPLE)
+    target_link_libraries(lvbase -ldl)
+    target_sources(lvbase
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/stacktrace_unix.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/library_unix.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/libraryloadpath_unix.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/applicationcontext_unix.cpp"
+    )
 endif()
 
-add_subdirectory(lib)
-add_subdirectory(plugins)
-
-if(BUILD_EXECUTABLE)
-    add_subdirectory(application)
+if(APPLE)
+    target_sources(lvbase
+        PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/stacktrace_unix.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/library_unix.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/libraryloadpath_unix.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/applicationcontext_mac.cpp"
+    )
 endif()
 
 if(BUILD_TESTS)
-    find_package(QT NAMES #[[Qt6 ]] Qt5 COMPONENTS Test REQUIRED)
-    find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Test REQUIRED)
-    set(TESTS_DEPLOY_PATH  ${CMAKE_BINARY_DIR}/tests)
-    add_subdirectory(tests)
+    add_subdirectory(test)
 endif()
